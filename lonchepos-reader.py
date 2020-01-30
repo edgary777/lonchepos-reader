@@ -2,20 +2,25 @@ import sqlite3
 from datetime import date, timedelta
 
 
-database = "path"
+database = "C:\Program Files\lonchepos1.1.0_w10\database.db"
 connection = sqlite3.connect(database)
 hoy = date.today()
 
 cursor = connection.cursor()
 totales = []
 
-def cuentaPanes(folios):
-    x = ""
-    for folio in folios:
-        x += "'" + str(folio[0]) + "', "
-    query = "SELECT sum(cantidad) FROM ticketProducts WHERE folio IN ({}) AND precio > 26;".format(x[:-2])
+def cuentaPanes(timeframe, onlyOne=False, hourly=False):
+    if onlyOne is True:
+        fecha = hoy - timedelta(days=timeframe)
+        query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio = 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
+    elif hourly is True:
+        pass
+    else:
+        fecha = hoy - timedelta(days=timeframe)
+        query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio >= 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
     cursor.execute(query)
-    return cursor.fetchall()[0][0]
+    result = cursor.fetchall()[0][0]
+    return result
 
 def percentageCalculator(rawSales):
     percentage = []
@@ -46,49 +51,39 @@ query = "SELECT folio FROM tickets WHERE fecha = '{}' AND cancelado <> 1;".forma
 cursor.execute(query)
 foliosHoy = cursor.fetchall()
 
-query = "SELECT folio FROM tickets WHERE fecha = '{}' AND cancelado <> 1;".format(hoy - timedelta(days=1))
-cursor.execute(query)
-foliosAyer = cursor.fetchall()
-
-dias = [foliosHoy, foliosAyer]
-cuentaPan = []
-
-for dia in dias:
-    cuentaPan.append(cuentaPanes(dia))
-    
 
 # promedio por hora de venta los ultimos 30 dias
-query = "SELECT SUM(total) AS sale_total, STRFTIME('%H', hora) AS Hour FROM tickets WHERE fecha <= '{}' AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%H', hora)".format(hoy - timedelta(days=1), hoy - timedelta(days = 31))
+query = "SELECT SUM(total) AS sale_total, STRFTIME('%H', hora) AS Hour FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%H', hora)".format(hoy - timedelta(days = 31))
 cursor.execute(query)
 hourlyRaw = cursor.fetchall()
 
 # promedio por hora de venta los ultimos 30 dias
-query = "SELECT SUM(total) AS sale_total, STRFTIME('%w', fecha) AS Hour FROM tickets WHERE fecha <= '{}' AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%w', fecha)".format(hoy - timedelta(days=1), hoy - timedelta(days = 31))
+query = "SELECT SUM(total) AS sale_total, STRFTIME('%w', fecha) AS Hour FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%w', fecha)".format(hoy - timedelta(days = 31))
 cursor.execute(query)
 weekdayRaw = cursor.fetchall()
 
 # buscador de folios para contador de panes para los ultimos 30 dias
-query = "SELECT folio FROM tickets WHERE fecha <= '{}' AND fecha >= '{}' AND cancelado <> 1;".format(hoy - timedelta(days=1), hoy - timedelta(days = 31))
+query = "SELECT folio FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1;".format(hoy - timedelta(days = 31))
 cursor.execute(query)
 foliosPromedio = (cursor.fetchall())
 
 # Contador de dias activos en los ultimos 30 dias
-query = "SELECT COUNT(DISTINCT fecha) FROM tickets WHERE fecha <= '{}' AND fecha >= '{}';".format(hoy - timedelta(days=1), hoy - timedelta(days = 31))
+query = "SELECT COUNT(DISTINCT fecha) FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}';".format(hoy - timedelta(days = 31))
 cursor.execute(query)
 diasVenta = cursor.fetchall()[0][0]
 
 # promedio por hora de venta los ultimos 90 dias
-query = "SELECT SUM(total) AS sale_total, STRFTIME('%H', hora) AS Hour FROM tickets WHERE fecha <= '{}' AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%H', hora)".format(hoy - timedelta(days=1), hoy - timedelta(days = 91))
+query = "SELECT SUM(total) AS sale_total, STRFTIME('%H', hora) AS Hour FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%H', hora)".format(hoy - timedelta(days = 91))
 cursor.execute(query)
 hourlyRawQuarter = cursor.fetchall()
 
 # promedio por dia de la semana de venta los ultimos 90 dias
-query = "SELECT SUM(total) AS sale_total, STRFTIME('%w', fecha) AS Hour FROM tickets WHERE fecha <= '{}' AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%w', fecha)".format(hoy - timedelta(days=1), hoy - timedelta(days = 91))
+query = "SELECT SUM(total) AS sale_total, STRFTIME('%w', fecha) AS Hour FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%w', fecha)".format(hoy - timedelta(days = 91))
 cursor.execute(query)
 weekdayRawQuarter = cursor.fetchall()
 
 # Contador de dias activos en los ultimos 90 dias
-query = "SELECT COUNT(DISTINCT fecha) FROM tickets WHERE fecha <= '{}' AND fecha >= '{}';".format(hoy - timedelta(days=1), hoy - timedelta(days = 91))
+query = "SELECT COUNT(DISTINCT fecha) FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}';".format(hoy - timedelta(days = 91))
 cursor.execute(query)
 diasVentaQuarter = cursor.fetchall()[0][0]
 
@@ -96,19 +91,19 @@ hourlyPercentage = percentageCalculator(hourlyRaw)
 weekdayPercentage = percentageCalculator(weekdayRaw)
 quarterHourly = percentageCalculator(hourlyRawQuarter)
 quarterWeekday = percentageCalculator(weekdayRawQuarter)
-average = cuentaPanes(foliosPromedio) / diasVenta
+average = cuentaPanes(diasVenta) / diasVenta
 
 
 print("PROMEDIO PANES ULTIMOS", diasVenta, "DIAS TRABAJADOS: ", average)
 print("")
 print("HOY", hoy)
 print("")
-print("Panes Hoy:", cuentaPan[0])
+print("Panes Hoy:", cuentaPanes(0, onlyOne=True))
 print("TOTAL HOY: $" + str(totales[0][0]))
 print("UBER HOY: $" + str(totales[2][0]))
 print("TOTAL SIN UBER: $" + str(totales[0][0] - totales[2][0]))
 print("_______________________________")
-print("Panes Ayer:", cuentaPan[1])
+print("Panes Ayer:", cuentaPanes(1, onlyOne=True))
 print("TOTAL AYER: $" + str(totales[1][0]))
 print("UBER AYER: $" + str(totales[3][0]))
 print("TOTAL SIN UBER AYER: $" + str(totales[1][0] - totales[3][0]))
