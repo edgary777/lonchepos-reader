@@ -12,12 +12,12 @@ totales = []
 def cuentaPanes(timeframe, onlyOne=False, hourly=False):
     if onlyOne is True:
         fecha = hoy - timedelta(days=timeframe)
-        query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio = 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
+        query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha = '{}' AND tickets.cancelado <> 1;".format(fecha)
     elif hourly is True:
         pass
     else:
         fecha = hoy - timedelta(days=timeframe)
-        query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio >= 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
+        query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
     cursor.execute(query)
     result = cursor.fetchall()[0][0]
     return result
@@ -92,7 +92,6 @@ weekdayPercentage = percentageCalculator(weekdayRaw)
 quarterHourly = percentageCalculator(hourlyRawQuarter)
 quarterWeekday = percentageCalculator(weekdayRawQuarter)
 average = cuentaPanes(diasVenta) / diasVenta
-
 
 print("PROMEDIO PANES ULTIMOS", diasVenta, "DIAS TRABAJADOS: ", average)
 print("")
