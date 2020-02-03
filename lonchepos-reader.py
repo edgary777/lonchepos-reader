@@ -13,13 +13,16 @@ def cuentaPanes(timeframe, onlyOne=False, hourly=False):
     if onlyOne is True:
         fecha = hoy - timedelta(days=timeframe)
         query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha = '{}' AND tickets.cancelado <> 1;".format(fecha)
-    elif hourly is True:
-        pass
+    elif hourly is True and onlyOne is False:
+        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha <> DATE('now') AND tickets.fecha >= '{}' AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora)".format(hoy - timedelta(days = 31))
     else:
         fecha = hoy - timedelta(days=timeframe)
         query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
     cursor.execute(query)
-    result = cursor.fetchall()[0][0]
+    if hourly:
+        result = cursor.fetchall()
+    else:
+        result = cursor.fetchall()[0][0]
     return result
 
 def percentageCalculator(rawSales):
@@ -57,7 +60,7 @@ query = "SELECT SUM(total) AS sale_total, STRFTIME('%H', hora) AS Hour FROM tick
 cursor.execute(query)
 hourlyRaw = cursor.fetchall()
 
-# promedio por hora de venta los ultimos 30 dias
+# promedio por dua de la semana de venta los ultimos 30 dias
 query = "SELECT SUM(total) AS sale_total, STRFTIME('%w', fecha) AS Hour FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%w', fecha)".format(hoy - timedelta(days = 31))
 cursor.execute(query)
 weekdayRaw = cursor.fetchall()
@@ -92,6 +95,7 @@ weekdayPercentage = percentageCalculator(weekdayRaw)
 quarterHourly = percentageCalculator(hourlyRawQuarter)
 quarterWeekday = percentageCalculator(weekdayRawQuarter)
 average = cuentaPanes(diasVenta) / diasVenta
+panesMesPromedioHora = cuentaPanes(diasVenta, hourly=True)
 
 print("PROMEDIO PANES ULTIMOS", diasVenta, "DIAS TRABAJADOS: ", average)
 print("")
