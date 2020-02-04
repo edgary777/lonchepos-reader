@@ -10,13 +10,15 @@ cursor = connection.cursor()
 totales = []
 
 def cuentaPanes(timeframe, onlyOne=False, hourly=False):
+    fecha = hoy - timedelta(days=timeframe)
     if onlyOne is True:
-        fecha = hoy - timedelta(days=timeframe)
         query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha = '{}' AND tickets.cancelado <> 1;".format(fecha)
     elif hourly is True and onlyOne is False:
-        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha <> DATE('now') AND tickets.fecha >= '{}' AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora)".format(hoy - timedelta(days = 31))
+        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha <> DATE('now') AND tickets.fecha >= '{}' AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora)".format(fecha)
+    elif hourly is True and onlyOne is True:
+        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha = '{}' AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora)".format(fecha)
+
     else:
-        fecha = hoy - timedelta(days=timeframe)
         query = "SELECT SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
     cursor.execute(query)
     if hourly:
@@ -95,7 +97,9 @@ weekdayPercentage = percentageCalculator(weekdayRaw)
 quarterHourly = percentageCalculator(hourlyRawQuarter)
 quarterWeekday = percentageCalculator(weekdayRawQuarter)
 average = cuentaPanes(diasVenta) / diasVenta
-panesMesPromedioHora = cuentaPanes(diasVenta, hourly=True)
+panesMesPromedioHora = [[panesHora[0], round(panesHora[1]/diasVenta, 1)] for panesHora in cuentaPanes(diasVenta, hourly=True)]
+panesCuartoPromedioHora = [[panesHora[0], round(panesHora[1]/diasVentaQuarter, 1)] for panesHora in cuentaPanes(diasVentaQuarter, hourly=True)]
+diasDeLaSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"]
 
 print("PROMEDIO PANES ULTIMOS", diasVenta, "DIAS TRABAJADOS: ", average)
 print("")
@@ -111,13 +115,19 @@ print("TOTAL AYER: $" + str(totales[1][0]))
 print("UBER AYER: $" + str(totales[3][0]))
 print("TOTAL SIN UBER AYER: $" + str(totales[1][0] - totales[3][0]))
 print("_______________________________")
-print("PORCENTAJES DE VENTA POR HORA DE VENTA EN LOS ULTIMOS ", diasVenta, "DIAS")
-for hour in hourlyPercentage:
-    print("{}:00-{}:00 = {}%".format(hour[0], hour[0] + 1, hour[1]))
-diasDeLaSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"]
+print("PORCENTAJES DE VENTA Y TOTAL DE PANES POR HORA DE VENTA EN LOS ULTIMOS", diasVenta, "Y", diasVentaQuarter, "DIAS")
+for hour in range(len(quarterHourly)):
+    print("{}:00-{}:00 = {}% - {} PANES \t|| {}% - {} PANES".format("0" + str(hourlyPercentage[hour][0]) if int(hourlyPercentage[hour][0]) < 10 else hourlyPercentage[hour][0],
+                                     hourlyPercentage[hour][0] + 1,
+                                                                     
+                                     hourlyPercentage[hour][1],
+                                     panesMesPromedioHora[hour][1],
+                                     quarterHourly[hour][1],
+                                     panesCuartoPromedioHora[hour][1]
+                                     ))
 print("_______________________________")
 
-print("PORCENTAJES DE VENTA POR DIA DE LA SEMANA EN LOS ULTIMOS ", diasVenta, "DIAS")
+print("PORCENTAJES DE VENTA POR DIA DE LA SEMANA EN LOS ULTIMOS", diasVenta, "Y", diasVentaQuarter, "DIAS")
 for day in weekdayPercentage:
     print("{} = {}%".format(diasDeLaSemana[day[0]], day[1]))
 print("_______________________________")
