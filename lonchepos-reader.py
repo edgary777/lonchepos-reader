@@ -11,16 +11,21 @@ diasDeLaSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES"
 cursor = connection.cursor()
 totales = []
 
-def cuentaPanes(timeframe, onlyOne=False, hourly=False):
+def cuentaPanes(timeframe, onlyOne=False, hourly=False, notToday=False):
     fecha = hoy - timedelta(days=timeframe)
-    if onlyOne is True:
-        query = "SELECT COALESCE(SUM(ticketProducts.cantidad), 0) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha = '{}' AND tickets.cancelado <> 1;".format(fecha)
-    elif hourly is True and onlyOne is False:
-        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha <> DATE('now') AND tickets.fecha >= '{}' AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora)".format(fecha)
-    elif hourly is True and onlyOne is True:
-        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha = '{}' AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora)".format(fecha)
+    if notToday:
+        notToday =  "AND tickets.fecha <> DATE('now') "
     else:
-        query = "SELECT COALESCE(SUM(ticketProducts.cantidad), 0) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha >= '{}' AND tickets.cancelado <> 1;".format(fecha)
+        notToday = ""
+    if onlyOne is True:
+        query = "SELECT COALESCE(SUM(ticketProducts.cantidad), 0) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha = '{}' {}AND tickets.cancelado <> 1;".format(fecha, notToday)
+    elif hourly is True and onlyOne is False:
+        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha >= '{}' {}AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora);".format(fecha, notToday)
+    elif hourly is True and onlyOne is True:
+        query = "SELECT STRFTIME('%H', tickets.hora), SUM(ticketProducts.cantidad) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE tickets.fecha = '{}' {}AND tickets.cancelado <> 1 AND ticketProducts.precio > 26 GROUP BY STRFTIME('%H', tickets.hora);".format(fecha, notToday)
+    else:
+        query = "SELECT COALESCE(SUM(ticketProducts.cantidad), 0) FROM tickets JOIN ticketProducts ON tickets.folio = ticketProducts.folio WHERE ticketProducts.precio > 26 AND tickets.fecha >= '{}' {}AND tickets.cancelado <> 1;".format(fecha, notToday)
+    query = query
     cursor.execute(query)
     if hourly:
         result = cursor.fetchall()
@@ -87,10 +92,10 @@ weekdayPercentage = percentageCalculator(weekdayRaw)
 quarterHourly = percentageCalculator(hourlyRawQuarter)
 quarterWeekday = percentageCalculator(weekdayRawQuarter)
 
-average = cuentaPanes(diasVenta) / diasVenta
+average = cuentaPanes(diasVenta + (31 - diasVenta), notToday=True) / diasVenta
 
-panesMesPromedioHora = [[panesHora[0], round(panesHora[1]/diasVenta, 1)] for panesHora in cuentaPanes(diasVenta, hourly=True)]
-panesCuartoPromedioHora = [[panesHora[0], round(panesHora[1]/diasVentaQuarter, 1)] for panesHora in cuentaPanes(diasVentaQuarter, hourly=True)]
+panesMesPromedioHora = [[panesHora[0], round(panesHora[1]/diasVenta, 1)] for panesHora in cuentaPanes(diasVenta + (31 - diasVenta), hourly=True, notToday=True)]
+panesCuartoPromedioHora = [[panesHora[0], round(panesHora[1]/diasVentaQuarter, 1)] for panesHora in cuentaPanes(diasVentaQuarter + (91 - diasVenta), hourly=True, notToday=True)]
 print("PROMEDIO PANES ULTIMOS", diasVenta, "DIAS TRABAJADOS: ", average)
 print("")
 print("HOY", hoy)
