@@ -47,32 +47,36 @@ def calculadoraTotales(timeframe):
     time = hoy - timedelta(days=timeframe)
     query = "SELECT COALESCE(SUM(total), 0) FROM tickets WHERE fecha = '{}' AND cancelado <> 1;".format(time)
     cursor.execute(query)
-    return cursor.fetchone()
+    ct = cursor.fetchone()
+    return ct
 
 def calculadoraTotalesUber(timeframe):
     time = hoy - timedelta(days=timeframe)
     query = "SELECT COALESCE(SUM(total), 0) FROM tickets WHERE nombre LIKE '%UBER%' AND fecha = '{}' AND cancelado <> 1;".format(time)
     cursor.execute(query)
-    return cursor.fetchone()
+    ctu = cursor.fetchone()
+    return ctu
 
 def ventaPorHora(timeframe):
     time = hoy - timedelta(days=timeframe)
     query = "SELECT SUM(total) AS sale_total, STRFTIME('%H', hora) AS Hour FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%H', hora)".format(time)
     cursor.execute(query)
-    return cursor.fetchall()
-
+    vph = cursor.fetchall()
+    return vph
 
 def ventaPorDiaSemana(timeframe):
     time = hoy - timedelta(days=timeframe)
     query = "SELECT SUM(total) AS sale_total, STRFTIME('%w', fecha) AS Hour FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}' AND cancelado <> 1 GROUP BY STRFTIME('%w', fecha)".format(time)
     cursor.execute(query)
-    return cursor.fetchall()
+    vpds = cursor.fetchall()
+    return vpds
 
 def contadorDiasActivos(timeframe):
     time = hoy - timedelta(days=timeframe)
     query = "SELECT COUNT(DISTINCT fecha) FROM tickets WHERE fecha <> DATE('now') AND fecha >= '{}';".format(time)
     cursor.execute(query)
-    return cursor.fetchall()[0][0]
+    cda = cursor.fetchall()[0][0]
+    return cda
 
 for i in range(2):
     totales.append(calculadoraTotales(i)[0])
@@ -114,7 +118,6 @@ print("PORCENTAJES DE VENTA Y TOTAL DE PANES POR HORA DE VENTA EN LOS ULTIMOS", 
 for hour in range(len(quarterHourly)):
     print("{}:00-{}:00 = {}% - {} PANES  \t|| {}% - {} PANES".format("0" + str(hourlyPercentage[hour][0]) if int(hourlyPercentage[hour][0]) < 10 else hourlyPercentage[hour][0],
                                      hourlyPercentage[hour][0] + 1,
-                                                                     
                                      hourlyPercentage[hour][1],
                                      panesMesPromedioHora[hour][1],
                                      quarterHourly[hour][1],
@@ -123,8 +126,11 @@ for hour in range(len(quarterHourly)):
 print("_______________________________")
 
 print("PORCENTAJES DE VENTA POR DIA DE LA SEMANA EN LOS ULTIMOS", diasVenta, "Y", diasVentaQuarter, "DIAS")
-for day in weekdayPercentage:
-    print("{} = \t{}%\t|| {}%".format(diasDeLaSemana[day[0]], day[1], quarterWeekday[day[0]][1]))
+try:
+    for day in weekdayPercentage:
+        print("{} = \t{}%\t|| {}%".format(diasDeLaSemana[day[0]], day[1], quarterWeekday[day[0]][1]))
+except IndexError:
+    print("{} = \t{}%\t|| {}%".format(diasDeLaSemana[day[0]], day[1], quarterWeekday[day[0] - 1][1]))
 print("_______________________________")
 
 connection.close()
